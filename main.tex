@@ -121,25 +121,27 @@ This choice also clarifies the role of alternative discrepancies. Kernel Stein d
 \section{Parametrized likelihood and posterior family}
 
 \subsection{Axis-aligned separable construction}
-%CODEX: restrict basic case to p =2, generailize in the next section.
-%CODEX: remove \kappa parameter from the basic case move that to the general case
-Let $x \in \Real^d$ denote the parameter vector and let the prior density be
+\subsection{Axis-aligned separable construction}
+Let $x \in \Real^d$ denote the parameter vector. In the basic benchmark, the prior is isotropic,
 \[
-\pi_0(x) = \mathcal{N}(x \mid x_0,S_0), \qquad S_0 = \diag(s_1^2,\dots,s_d^2).
+\pi_0(x) = \mathcal{N}(x \mid x_0,s_0^2 I),
 \]
-Let $\vc\lambda \in \Real_+^d$ and set
+so it remains invariant under rotation. Let $\vc\lambda \in \Real_+^d$ and set
 \[
-D = \diag(\lambda_1,\dots,\lambda_d), \qquad u = D(x-x_0).
+D = \diag(\lambda_1,\dots,\lambda_d),
+\qquad
+u = D(x-x_0).
 \]
-The benchmark is defined through a positive modifier. For $u \in \Real^d$, let
+The basic modifier is taken in multiplicative form,
 \[
 \ell(u)
 =
-a \exp\!\left(-\frac{1}{d}\sum_{i=1}^d |u_i|^p\right)
-+ \exp\!\left(\frac{\kappa}{d}\sum_{i=1}^d \cos(\omega u_i)\right),
+\exp\!\left(
+-\frac{1}{d}\norm{u}_2^2 + \frac{1}{d}\sum_{i=1}^d \cos(\omega u_i)
+\right),
+\qquad \omega > 0.
 \]
-where $a>0$, $p \in [1,2]$, $\kappa \ge 0$, and $\omega > 0$.
-The resulting target density is
+The corresponding target density is
 \begin{equation}
 \label{eq:target-density-axis}
 \pi(x)
@@ -147,127 +149,73 @@ The resulting target density is
 \frac{1}{Z}\,\ell(D(x-x_0))\,\pi_0(x).
 \end{equation}
 
-This is not the classical Ackley function. The change is deliberate: the radial Ackley coupling is replaced by coordinate-wise factors so that normalization and Gaussian-kernel expectations reduce to one-dimensional building blocks. The global scale parameter used in earlier drafts is omitted because it is redundant with the coordinate scalings $\lambda_i$. Large $\lambda_i$ create sharp concentration and oscillation in coordinate $i$, while small $\lambda_i$ leave the corresponding marginal close to the Gaussian prior. The same shift $x_0$ is used in both the Gaussian prior and the modifier, so the basic benchmark has a single common location parameter.
+This is not the classical Ackley function. The change is deliberate: the radial Ackley coupling is replaced by a separable coordinate-wise construction so that normalization and Gaussian-kernel expectations reduce to one-dimensional building blocks. The same shift $x_0$ is used in both the prior and the modifier, and the only coordinate dependence in the basic case is through the anisotropy vector $\vc\lambda$.
 
-Because both exponentials factor over coordinates, the normalizing constant decomposes as
+Because the modifier is multiplicatively separable, the normalizing constant factorizes as
 \[
-Z = a Z^{(p)} + Z^{(\cos)},
+Z = \prod_{i=1}^d Z_i,
 \]
-with 
-%CODEX: use \pi_0 in following
-
+where
 \[
-Z^{(p)}
+Z_i
 =
-\prod_{i=1}^d
 \int_{\Real}
-\mathcal{N}(x_i \mid x_{0,i},s_i^2)
-\exp\!\left(-\frac{1}{d}|\lambda_i (x_i-x_{0,i})|^p\right)\,\d x_i,
+\pi_{0,i}(x_i)
+\exp\!\left(
+-\frac{\lambda_i^2}{d}(x_i-x_{0,i})^2
++ \frac{1}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))
+\right)\,\d x_i,
 \]
-and
-\[
-Z^{(\cos)}
-=
-\prod_{i=1}^d
-\int_{\Real}
-\mathcal{N}(x_i \mid x_{0,i},s_i^2)
-\exp\!\left(\frac{\kappa}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))\right)\,\d x_i.
-\]
-% CODEX: compute the integrals analyticaly it should be possible at least in terms of some standard fucntions available in scipy.func
-Hence exact normalization reduces to one-dimensional quadrature. The target is therefore analytically specified after numerical evaluation of one-dimensional integrals, even though the normalizing constant is not generally available in closed form. The posterior interpretation is immediate if $\ell(D(x-x_0))$ is viewed as an analytically designed likelihood factor applied to the prior density $\pi_0$.
+with $\pi_{0,i}(x_i)=\mathcal{N}(x_i \mid x_{0,i},s_0^2)$. Hence exact normalization reduces to one-dimensional factors.
 
 \subsection{Generalized benchmark}
-
-To generalize anisotropy beyond the coordinate axes, let $Q \in \Real^{d \times d}$ be an orthonormal (rotation) matrix let
+To generalize anisotropy beyond the coordinate axes, let $Q \in \Real^{d \times d}$ be an orthonormal matrix and set
 \[
-D = \diag(\vc\lambda), \qquad \vc\lambda \in \Real^d_+.
+z = Q(x-x_0).
 \]
-Set $z = Q(x-x_0)$. The most general benchmark family considered here is a finite positive sum of separable components,
-%CODEX: do not overcomplicate eliminate general M number of terms, consider just the central bump + oscilatory term
-%CODEX: eliminate redundant parameters (e.g. a_2), total scale of the likelihood is irrelevant
+The generalized modifier is
 \[
 \ell_{\mathrm{gen}}(z)
 =
-\sum_{m=1}^{M} a_m \prod_{i=1}^d \ell_i^{(m)}(z_i),
-\qquad a_m > 0,
+\exp\!\left(
+-\frac{1}{d}\sum_{i=1}^d |\lambda_i z_i|^{p_i}
++ \frac{1}{d}\sum_{i=1}^d \kappa_i \cos(\omega_i z_i)
+\right),
 \]
-with one-dimensional factors $\ell_i^{(m)} : \Real \to \Real_+$. The target density is then
+with axis-dependent parameter vectors
+\[
+\vc\lambda \in \Real_+^d,
+\qquad
+\vc p \in [1,2]^d,
+\qquad
+\vc\kappa \in \Real_+^d,
+\qquad
+\vc\omega \in \Real_+^d.
+\]
+The target density is
 \[
 \pi_{\mathrm{gen}}(x)
 =
 \frac{1}{Z_{\mathrm{gen}}}\,\ell_{\mathrm{gen}}(Q(x-x_0))\,\pi_0(x).
 \]
+The basic benchmark is recovered by taking $\vc p \equiv 2$, $\vc\kappa \equiv \vc 1$, and $\vc\omega \equiv \omega \vc 1$.
 
-The two-component modifier in \eqref{eq:target-density-axis} is a special case of this family with
-\[
-\ell_i^{(1)}(z_i) = \exp\!\left(-\frac{1}{d}|\lambda_i z_i|^p\right),
-\qquad
-\ell_i^{(2)}(z_i) = \exp\!\left(\frac{\kappa}{d}\cos(\omega \lambda_i z_i)\right),
-\]
-and the generalized family extends this by allowing vector-valued parameter fields such as
-%CODEX: do not see any usage of \phi parameter.
-%CODEX: explicitly state that you make certain parameters axis / dimansion dependent.
-%CODEX: rather use \omega  only in the oscilatory term instead of scaling lambda
-%CODEX: the notation mix the vector and componentwise expressions, fix that
-\[
-\vc p \in [1,2]^d,
-\qquad
-\vc\kappa \in \Real_+^d,
-\qquad
-\vc\omega \in \Real_+^d,
-\qquad
-\vc\varphi \in \Real^d,
-\]
-as well as more general one-dimensional factor families $\ell_i^{(m)}$. This generalized form still preserves one-dimensional separability and therefore retains the same target-side computational strategy.
-
-The separable structure is preserved exactly in the rotated coordinates $z$, but the full target remains a tensor product only if the Gaussian factors are expressed in the same basis. For the benchmark developed here, the cleanest choice is therefore
-\[
-S_0 = Q^\top \diag(s_1^2,\dots,s_d^2) Q.
-\]
-%CODEX: restrict prior both here and in the basic case to isotropic so it remains invariant to the rotation Q
-Under this alignment the prior in $z$-coordinates is diagonal, and all target-side integrals needed later for \MMD\ again reduce to products of one-dimensional terms. If one instead keeps a prior covariance that is not diagonal in the $Q$ basis, the benchmark remains well defined but exact product factorization is generally lost. In that case the rotated model should be presented as an extension with efficient but no longer fully separable Gaussian integration.
-
-This formulation also separates the modeling roles of $D$ and $Q$. The matrix $D$ controls anisotropic sensitivity, hence the effective benchmark dimension, while $Q$ only changes the orientation of that sensitive subspace in the ambient coordinates.
-
-\subsection{Additive versus multiplicative benchmark modifiers}
-%CODEX: You should point this out more strongly. The aditive case is problematic bocause the integral of the oscilatory term dos not admit 
-% normalization. So please turn all setup to the multiplicative form and then remove this section. 
-The modifier in \eqref{eq:target-density-axis} is additive. This is less conventional than a product of local factors, but it is convenient for the benchmark objective because it keeps the concentrating and oscillatory contributions explicitly separated. The target-side Gaussian-kernel expectations then decompose into a sum of two separable contributions, which is exactly the structure used later for efficient \MMD\ evaluation.
-
-An alternative is the multiplicative form
-\[
-\ell_{\times}(u)
-=
-\exp\!\left(
--\frac{1}{d}\sum_{i=1}^d |u_i|^p
-+ \frac{\kappa}{d}\sum_{i=1}^d \cos(\omega u_i)
-\right).
-\]
-This variant is closer to the usual likelihood notation because its logarithm is additive across coordinates. It also remains separable,
-\[
-\ell_{\times}(u)
-=
-\prod_{i=1}^d \exp\!\left(-\frac{1}{d}|u_i|^p + \frac{\kappa}{d}\cos(\omega u_i)\right),
-\]
-so the same rotated-coordinate reduction to one-dimensional quadrature remains available.
-
-The present paper keeps the additive modifier as the primary benchmark definition. The reason is that it exposes the two intended benchmark mechanisms directly and makes their relative weight easy to control through the coefficient $a$. The multiplicative form should nevertheless be treated as a natural companion benchmark, especially if a more conventional posterior interpretation becomes more important than explicit decomposition into concentration and oscillation components.
+This is the level of generality that still preserves separability while keeping the meaning of each parameter clear. The vector $\vc\lambda$ controls anisotropic concentration, $\vc p$ controls local regularity of the central bump, $\vc\kappa$ controls the strength of oscillatory multimodality, and $\vc\omega$ controls the oscillation frequency. Because the prior remains isotropic, the role of $Q$ is only to orient the difficult subspace in the ambient coordinates.
 
 \subsection{Analytically evaluable one-dimensional factors}
 
 Several one-dimensional integrals required by the benchmark admit closed-form or rapidly convergent semi-analytic expressions. These should be used whenever the parameter choice allows them.
 
-First, for the quadratic power term $p=2$, one obtains for $X \sim \mathcal{N}(\mu,\sigma^2)$
+First, the Gaussian prior and the quadratic central factor can be merged analytically. For $X \sim \mathcal{N}(\mu,\sigma^2)$ and $\alpha \ge 0$,
 \[
 \E\!\left[\exp\!\left(-\alpha X^2\right)\right]
 =
 \frac{1}{\sqrt{1+2\alpha \sigma^2}}
 \exp\!\left(
 -\frac{\alpha \mu^2}{1+2\alpha \sigma^2}
-\right),
-\qquad \alpha \ge 0.
+\right).
 \]
-Therefore every factor in $Z^{(p)}$ with exponent $p=2$ can be evaluated analytically by setting $\alpha = \lambda_i^2/d$.
+In the centered basic benchmark one has $\mu=0$, $\sigma=s_0$, and $\alpha=\lambda_i^2/d$, so the quadratic part of every factor is explicit.
 
 Second, the cosine term admits an exact Fourier--Bessel expansion. For $\beta \ge 0$,
 \[
@@ -277,15 +225,15 @@ I_0(\beta) + 2\sum_{n=1}^{\infty} I_n(\beta)\cos(n\theta),
 \]
 where $I_n$ denotes the modified Bessel function of the first kind. Consequently, for $X \sim \mathcal{N}(\mu,\sigma^2)$,
 \[
-\E\!\left[\exp\!\left(\beta \cos(\omega X + \varphi)\right)\right]
+\E\!\left[\exp\!\left(\beta \cos(\omega X)\right)\right]
 =
 I_0(\beta)
 + 2\sum_{n=1}^{\infty}
 I_n(\beta)
-\cos\!\left(n(\omega \mu + \varphi)\right)
+\cos(n\omega \mu)
 \exp\!\left(-\frac{1}{2}n^2\omega^2\sigma^2\right).
 \]
-This provides an exact representation and a practical numerical evaluation scheme because the Gaussian damping makes the series rapidly convergent for moderate $\beta$ and $\omega \sigma$.
+This provides an exact representation and a practical numerical evaluation scheme because the Gaussian damping makes the series rapidly convergent.
 
 The same idea applies to the mixed term in \MMD. Multiplying the Gaussian probe by the Gaussian prior yields
 \[
@@ -305,7 +253,7 @@ C(o,\mu;r,s)
 \frac{r}{\sqrt{r^2+s^2}}
 \exp\!\left(-\frac{(o-\mu)^2}{2(r^2+s^2)}\right).
 \]
-Hence every one-dimensional mixed factor reduces again to an expectation under a Gaussian law and can use the same analytic formulas for quadratic power terms and Fourier--Bessel series for cosine terms. In the basic benchmark one simply takes $\varphi=0$ and a common pair $(\kappa,\omega)$; the vector-valued generalizations belong to the next subsection only. Only the genuinely nonquadratic power exponents require one-dimensional numerical quadrature.
+Hence every one-dimensional factor in the basic multiplicative benchmark can be written as a Gaussian prefactor multiplied by a Fourier--Bessel series. In the generalized benchmark, the same reduction remains available whenever $p_i=2$. Only coordinates with nonquadratic exponents $p_i \neq 2$ require one-dimensional numerical quadrature.
 
 \section{Maximum mean discrepancy and related metrics}
 
@@ -355,26 +303,22 @@ If both the target and the kernel are diagonal in the same coordinate system, th
 \[
 \int k_R(x,o)\,\pi(x)\,\d x
 =
-\frac{1}{Z}
-\left[
-a\,I^{(p)}(o,R) + I^{(\cos)}(o,R)
-\right],
+\frac{1}{Z}\,I(o,R),
 \]
 with
 \[
-I^{(p)}(o,R)
+I(o,R)
 =
 \prod_{i=1}^d
 \int_{\Real}
 \exp\!\left(-\frac{(x_i-o_i)^2}{2r_i^2}\right)
-\mathcal{N}(x_i \mid x_{0,i},s_i^2)
-\exp\!\left(-\frac{1}{d}|\lambda_i (x_i-x_{0,i})|^p\right)\,\d x_i,
+\pi_{0,i}(x_i)
+\exp\!\left(
+-\frac{\lambda_i^2}{d}(x_i-x_{0,i})^2
++ \frac{1}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))
+\right)\,\d x_i,
 \]
-and an analogous factorization for $I^{(\cos)}(o,R)$ with the cosine factor
-\[
-\exp\!\left(\frac{\kappa}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))\right).
-\]
-The same structure holds for $T_{PP}$, now with two Gaussian kernels coupled through separate one-dimensional factors. If each one-dimensional integral is evaluated by an $M$-point quadrature rule, a single mixed expectation costs $O(dM)$, while the empirical kernel term costs $O(N^2 d)$.
+and the same product structure holds for $T_{PP}$. If each one-dimensional factor is evaluated by an $M$-point quadrature rule, a single mixed expectation costs $O(dM)$, while the empirical kernel term costs $O(N^2 d)$.
 
 For the rotated benchmark, one writes $z=Qx$ and aligns the kernel as
 \[
@@ -424,13 +368,14 @@ In \texttt{numpy}, the empirical term $T_{\widehat P_N\widehat P_N}$ is naturall
 \log \prod_{i=1}^d a_i = \sum_{i=1}^d \log a_i.
 \]
 This avoids underflow when $d$ is moderate or large and also simplifies the comparison of different bandwidth scales. The repository prototype in \texttt{scripts/benchmark\_reference.py} implements the exact target-side terms, while \texttt{scripts/plot\_test\_function.py} generates the benchmark-visualization figures used below.
+%DONE: move the Python prototype into scripts/benchmark_reference.py and keep manuscript references consistent with that path
+%DONE: add scripts/plot_test_function.py for manuscript figure generation
 
 The rotated case adds little implementation overhead if the alignment convention is adopted from the start. One first computes $z_n = QX_n$, evaluates the same one-dimensional building blocks in the $z$ basis, and then reuses the axis-aligned formulas. This is one of the main practical reasons to formulate the benchmark in rotated coordinates rather than treating the rotation as a post hoc perturbation.
 
 \section{Parameter regimes for challenging inverse-problem surrogates}
 
 The benchmark is not intended to reproduce the full geometry of a PDE-constrained posterior. Its role is narrower: to isolate several recurring sources of difficulty while keeping the target-side discrepancy exactly or efficiently computable. For inverse problems involving heterogeneous coefficient fields in elliptic models such as Darcy flow or linear elasticity, three parameter regimes are especially useful.
-%CODEX: for following sources of difficulties provide particular example in which practical inverse problems (in context of Darcy flow) it may happen
 
 \subsection{Low-dimensional informed subspace in a high-dimensional ambient space}
 
@@ -438,7 +383,7 @@ A standard setting in field inversion is that only a limited number of coarse or
 \[
 \lambda_1 \ge \cdots \ge \lambda_{d_{\mathrm{eff}}} \gg \lambda_{d_{\mathrm{eff}}+1} \ge \cdots \ge \lambda_d.
 \]
-The rotation matrix $Q$ then plays the role of a reduced basis or Karhunen--Lo\`eve coordinate system. In this regime, a sampler must detect a narrow informative subspace embedded in many weakly constrained directions.
+In Darcy inversion this occurs when only a small number of coarse conductivity modes are informed by pressure observations, while fine-scale modes remain dominated by the prior. The rotation matrix $Q$ then plays the role of a reduced basis or Karhunen--Lo\`eve coordinate system. In this regime, a sampler must detect a narrow informative subspace embedded in many weakly constrained directions.
 
 \subsection{Multiscale mode structure in leading coordinates}
 
@@ -452,7 +397,7 @@ Oscillatory ambiguity is relevant when different parameter fields generate simil
 \qquad
 \omega_i \propto i^\alpha,
 \]
-with $d_{\mathrm{osc}} \le d_{\mathrm{eff}}$ and $\alpha > 0$. The first coordinates then contain repeated local modes at several spatial scales, while the rest remain dominated by prior-Gaussian behavior.
+with $d_{\mathrm{osc}} \le d_{\mathrm{eff}}$ and $\alpha > 0$. In Darcy flow this corresponds to situations where distinct channelized or barrier-like conductivity configurations produce very similar pressure responses, creating repeated local modes in only a few leading coordinates. The first coordinates then contain repeated local modes at several spatial scales, while the rest remain dominated by prior-Gaussian behavior.
 
 \subsection{Heavy-tailed or sharp directions}
 
@@ -465,31 +410,35 @@ p_{\mathrm{sharp}}, & i \in \mathcal{I}_{\mathrm{sharp}},
 \end{cases}
 \qquad 1 \le p_{\mathrm{sharp}} < 2.
 \]
-Quadratic coordinates keep the analytically tractable Gaussian-like core, while subquadratic coordinates create sharper central concentration and increase the difficulty of local exploration.
+%CODEX: Following interpretation is wrong, $p$ value has noting to do with spatial shape of the heterogeneity. Spatial behavior is desribed by th emode functions, 
+% $p$ affects SHAPE of DISTRIBUTION of the mode eigenvalue. Havy tailed mode means that its eigen value span multiple orders of magnitude. Analyse what is the impact on 
+%the resulting random field. 
+Quadratic coordinates keep the analytically tractable Gaussian-like core, while subquadratic coordinates create sharper central concentration and increase the difficulty of local exploration. In Darcy inversion this mimics mixed regimes where some conductivity modes are smoothly identifiable but others correspond to localized barriers or interfaces and produce much sharper posterior features.
 
 \subsection{Concrete benchmark templates}
-%CODEX: the examples are associated with Darcy and elasticity quite arbitrarly, I weould prefer to 
-%       provide examples of the 3 sources of difficoulties whitn a single physical process (e.g. Darcy flow) 
 
 The following templates are suitable starting points.
 
 \begin{enumerate}
-    \item \textbf{Rotated sparse-informative benchmark:} choose $d=100$, $d_{\mathrm{eff}}=8$, $\lambda_i = 6$ for $i \le 8$, $\lambda_i = 0.6$ otherwise, $p_i = 2$, and nontrivial rotation $Q$. This probes whether a sampler can adapt to a narrow informed subspace.
-    \item \textbf{Darcy-inspired multiscale benchmark:} choose $d=128$, prior scales $s_i \propto i^{-1}$, $\lambda_i \propto i^{-1/2}$ for the first 20 modes and rapidly decaying afterward, with oscillatory parameters $\kappa_i$ nonzero only for the first 6 to 10 modes. This mimics a situation where only coarse conductivity modes are well informed, but a few leading directions exhibit multimodal ambiguity.
-    \item \textbf{Elasticity-inspired mixed-regularity benchmark:} choose $d=80$, two groups of active coordinates, one with $p_i=2$ and another with $p_i \approx 1.2$, together with moderate oscillatory amplitudes in the first group only. This creates a mixture of near-Gaussian and sharp directions, resembling parameter blocks with very different identifiability.
+    \item \textbf{Darcy low-rank benchmark:} choose $d=100$, $d_{\mathrm{eff}}=8$, $\lambda_i = 6$ for $i \le 8$, $\lambda_i = 0.6$ otherwise, $\vc p \equiv 2$, and nontrivial rotation $Q$. This probes whether a sampler can adapt to a narrow informed subspace of conductivity modes.
+    \item \textbf{Darcy multimodal benchmark:} choose $d=128$, $s_0=1$, $\lambda_i \propto i^{-1/2}$ for the first 20 modes and rapidly decaying afterward, with $\kappa_i$ nonzero only for the first 6 to 10 modes. This mimics pressure-response ambiguities among a few leading conductivity patterns.
+    \item \textbf{Darcy mixed-regularity benchmark:} choose $d=80$, two groups of active coordinates, one with $p_i=2$ and another with $p_i \approx 1.2$, together with moderate oscillatory amplitudes in the first group only. This creates a mixture of smooth and sharp conductivity directions within a single inversion setting.
 \end{enumerate}
 
 These examples are not literal PDE posteriors. Rather, they are controlled surrogates for the main numerical obstacles: high ambient dimension, concentration in a rotated subspace, multimodality in only a few directions, and uneven local regularity across coordinates.
-%CODEX: change plots to 2D histograms + contours using matrix of 4 dimension pairs, two dimensions from the active set of dimensions two dimensions from the "inactive set"
+%DONE: replace the pseudo-3D modifier plots by 2D pair-matrix contour plots
+%DONE: save the generated testcase figures as PDF in figures/
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\textwidth]{figures/testcase_modifier_slices.pdf}
-    \caption{Pseudo-three-dimensional slices of the modifier $\ell(z)$ for the three concrete benchmark templates. Each panel shows the slice in the first two rotated coordinates, with all remaining coordinates fixed at zero. The base surface shows the two-dimensional modifier landscape, while the colored wall curves show one-dimensional marginals along the coordinate axes.}
-    \label{fig:testcase-modifier-slices}
+    \includegraphics[width=\textwidth]{figures/testcase_pair_matrices.pdf}
+    \caption{Contour matrices of the modifier $\ell(z)$ for the three concrete Darcy-inspired benchmark templates. For each row, the four panels show two active--active, two active--inactive, and one inactive--inactive coordinate pair, with all remaining coordinates fixed at zero. This layout makes it explicit which directions carry the dominant structure and which remain close to the background geometry.}
+    \label{fig:testcase-pair-matrices}
 \end{figure}
+%DONE: include the combined testcase pair-matrix PDF figure in main.tex
 
-Figure~\ref{fig:testcase-modifier-slices} makes the intended contrast between the templates explicit. The sparse-informative case retains a narrow but comparatively regular dominant basin, the Darcy-inspired case introduces repeated local structure in the leading coordinates, and the elasticity-inspired case combines smooth and sharper directions in a way that produces steeper local variations near the main basin.
+Figure~\ref{fig:testcase-pair-matrices} makes the intended contrast between the templates explicit. The low-rank case concentrates structure almost entirely in the active-active panels, the multimodal case produces repeated contour patterns only in a few leading coordinates, and the mixed-regularity case combines smooth and sharper contour geometry across the active subspace while leaving inactive directions comparatively featureless.
+%DONE: regenerate the manuscript PDF with the new pair-matrix figure
 
 \section{Conclusion}
 

@@ -16,11 +16,12 @@ Write it as a bit more detailet paper:
 7. Practical efficient implementation using numpy (and scipy)
 
 ## Hard policy
+- remove any previous `%DONE: ..` comments in the manuscript when you start your work after given prompt
+- interpret comments in form `%CODEX: ... ` as todo notes for your further changes. Turn them into `%DONE: ...` once you take the note into account. 
+- keep the newly generated %DONE: comments during processing the single prompt
 - Use `biblatex`: `\addbibresource{references.bib}` in `main.tex` and `\printbibliography` at the end.
 - Do not ask the user to build the project. If PDF review is needed, inspect the existing generated PDF with read-only Linux command-line tools and then edit the sources.
 - Assume the user reviews source changes in `git-cola` before commit; keep patches clean, localized, and easy to inspect.
-- interpret comments in form `%CODEX: ... ` as todo notes for your further changes. Turn them into `%DONE: ...` once you take the note into account. 
-- remove any previous `%DONE: ..` comments
 
 ## Technical scope and contribution boundaries
 - Treat the benchmark as a methodology paper: benchmark construction, exact target-side evaluation, and implementation guidance.
