@@ -1,0 +1,500 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{placeins}
+\usepackage{float}
+\usepackage{csquotes}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{xspace}
+\usepackage{mdframed}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[backend=biber]{biblatex}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\sisetup{
+    exponent-product=\cdotp,
+    per-mode=reciprocal,
+    inter-unit-product=\ensuremath{{}\cdot{}}
+}
+
+% own macros - preserved from the template
+\def\abs#1{|#1|}
+\def\argdot{{\hspace{0.18em}\cdot\hspace{0.18em}}}
+\def\avg#1{\langle#1\rangle}
+\def\Bavg#1{\Left\langle#1\Right\rangle}
+\def\Cov{\mathop{\rm Cov}}
+\def \D{{{\rm I\kern-.3em D}}}
+\def\d{\,{\rm d}}
+\def\degree{^\circ}
+\def \E{{\mathsf E}}
+\def\eps{\varepsilon}
+\def\estrho{\hat\rho}
+\def\estvl{{\vc{\hat\lambda}}}
+\def\estvmu{{\vc{\hat\mu}}}
+\def\fdiv{\overline{\div}}
+\def\fgrad{\overline{\grad}}
+\newcommand{\figref}[1]{Fig.~\ref{#1}}
+\def\grad{\nabla}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\def\pluseq{\mathrel{+}=}
+\def\prtl{\partial}
+\def\R{\mathbf{R}}
+\def\Real{\mathbb R}
+\DeclareMathOperator{\Span}{span}
+\newcommand{\symbfit}[1]{\bm{#1}}
+\newcommand{\tn}[1]{{\symbfit{#1}}}
+\def\todo#1{{\color{red}TODO: #1}}
+\def\tvl{\vc{\tilde\lambda}}
+\def\uu{\vc u}
+\def\var#1{\llangle#1\rrangle}
+\def\Var{\mathop{\rm Var}}
+\newcommand{\vc}[1]{{\symbfit{#1}}}
+\def\vl{{\vc\lambda}}
+\def\vmu{\vc\mu}
+\def\vnu{\vc\nu}
+\def\vphi{\vc\phi}
+
+\AtBeginDocument{%
+  \let\divsymbol\div
+  \gdef\div{\mathop{\mathrm{div}}\nolimits}
+}
+
+\def\munit#1{\,\mathrm{#1}}
+\def\bunit#1{[\hspace{1pt}\mathrm{#1}]}
+\def\mps{\unit{\meter\per\second}}
+\def\msq{m\textsuperscript{2}\xspace}
+
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\MMDop}{MMD}
+\DeclareMathOperator{\KLop}{KL}
+\DeclareMathOperator{\TVop}{TV}
+\DeclareMathOperator{\tr}{tr}
+\newcommand{\MMD}{\ensuremath{\MMDop}\xspace}
+\newcommand{\KL}{\ensuremath{\KLop}\xspace}
+\newcommand{\TV}{\ensuremath{\TVop}\xspace}
+
+\addbibresource{references.bib}
+
+\title{A Parametrized Benchmark for Bayesian Samplers with Separable Anisotropy and Exact Gaussian-Kernel MMD}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We consider a synthetic benchmark family for Bayesian samplers that combines high ambient dimension, a smaller effective sensitive dimension, anisotropy, and repeated local modes, while retaining exact access to the target density and efficient target-side evaluation of Gaussian-kernel maximum mean discrepancy (\MMD). The construction is motivated by Ackley-type oscillatory structure but replaces the classical radial coupling by separable coordinate-wise factors. We formulate both the axis-aligned and rotated anisotropy cases, identify the assumptions under which one-dimensional separability is preserved, and outline a practical implementation in \texttt{numpy} and \texttt{scipy}.
+\end{abstract}
+
+\section{Goal and benchmark requirements}
+
+Benchmarking Bayesian samplers is difficult when the target distribution is analytically specified but exact discrepancy measures are unavailable. In many practical comparisons, one therefore replaces the exact target by a long reference chain or by stored samples from a trusted method. This is useful, but it introduces a secondary Monte Carlo error into the evaluation procedure itself \parencite{Magnusson2025PosteriorDB,Ding2025MCBench}.
+
+The present benchmark is intended for a narrower, more controlled use case. We seek a target family with the following properties:
+\begin{enumerate}
+    \item the ambient dimension $d$ may be large, while only a smaller subset of directions is strongly informative;
+    \item multimodality and anisotropy are both tunable by a small set of benchmark parameters;
+    \item the exact target density is known pointwise up to a normalizing constant, and preferably after normalization as well;
+    \item discrepancy between the exact target and an empirical sample can be evaluated without an auxiliary reference Markov chain;
+    \item the resulting formulas admit efficient numerical implementation with standard scientific Python tools.
+\end{enumerate}
+
+The Ackley function is a natural source of intuition because it combines a central basin with oscillatory local structure. However, its radial term couples all coordinates and obstructs the exact tensor-product reductions that are desirable for benchmark evaluation. The main design decision is therefore to keep the oscillatory motivation while replacing the radial coupling by a separable construction.
+
+\section{Related work and positioning}
+
+The proposed benchmark should be understood as a methodological combination rather than as a new discrepancy measure. Synthetic hard targets have long been used to stress sampling algorithms, and modern benchmark suites already formalize this practice for Bayesian computation \parencite{Magnusson2025PosteriorDB,Ding2025MCBench}. In parallel, \MMD\ is a standard kernel discrepancy with a mature theoretical basis in reproducing kernel Hilbert space embeddings of probability measures \parencite{Gretton2012,Sriperumbudur2010Hilbert,Sriperumbudur2011Universality}. 
+
+The relevant methodological gap is narrower. Existing benchmark frameworks often rely on reference draws, whereas the present construction is intended to keep the target-side terms in the Gaussian-kernel \MMD\ computation exact or reducible to low-dimensional quadrature. This makes it possible to compare a sampler output directly against the exact target without introducing a second stochastic approximation on the reference side.
+
+This choice also clarifies the role of alternative discrepancies. Kernel Stein discrepancies are natural when the score of an unnormalized target is available, but they probe a different function class and lead to different computational trade-offs \parencite{Liu2016KSD,Kalinke2025NystromKSD}. Transport-based metrics such as Wasserstein distance encode geometric information that is valuable in its own right, but they are not the most direct continuation of Gaussian probe averages and they do not share the same separability-based simplifications.
+
+\section{Parametrized likelihood and posterior family}
+
+\subsection{Axis-aligned separable construction}
+%CODEX: restrict basic case to p =2, generailize in the next section.
+%CODEX: remove \kappa parameter from the basic case move that to the general case
+Let $x \in \Real^d$ denote the parameter vector and let the prior density be
+\[
+\pi_0(x) = \mathcal{N}(x \mid x_0,S_0), \qquad S_0 = \diag(s_1^2,\dots,s_d^2).
+\]
+Let $\vc\lambda \in \Real_+^d$ and set
+\[
+D = \diag(\lambda_1,\dots,\lambda_d), \qquad u = D(x-x_0).
+\]
+The benchmark is defined through a positive modifier. For $u \in \Real^d$, let
+\[
+\ell(u)
+=
+a \exp\!\left(-\frac{1}{d}\sum_{i=1}^d |u_i|^p\right)
++ \exp\!\left(\frac{\kappa}{d}\sum_{i=1}^d \cos(\omega u_i)\right),
+\]
+where $a>0$, $p \in [1,2]$, $\kappa \ge 0$, and $\omega > 0$.
+The resulting target density is
+\begin{equation}
+\label{eq:target-density-axis}
+\pi(x)
+=
+\frac{1}{Z}\,\ell(D(x-x_0))\,\pi_0(x).
+\end{equation}
+
+This is not the classical Ackley function. The change is deliberate: the radial Ackley coupling is replaced by coordinate-wise factors so that normalization and Gaussian-kernel expectations reduce to one-dimensional building blocks. The global scale parameter used in earlier drafts is omitted because it is redundant with the coordinate scalings $\lambda_i$. Large $\lambda_i$ create sharp concentration and oscillation in coordinate $i$, while small $\lambda_i$ leave the corresponding marginal close to the Gaussian prior. The same shift $x_0$ is used in both the Gaussian prior and the modifier, so the basic benchmark has a single common location parameter.
+
+Because both exponentials factor over coordinates, the normalizing constant decomposes as
+\[
+Z = a Z^{(p)} + Z^{(\cos)},
+\]
+with 
+%CODEX: use \pi_0 in following
+
+\[
+Z^{(p)}
+=
+\prod_{i=1}^d
+\int_{\Real}
+\mathcal{N}(x_i \mid x_{0,i},s_i^2)
+\exp\!\left(-\frac{1}{d}|\lambda_i (x_i-x_{0,i})|^p\right)\,\d x_i,
+\]
+and
+\[
+Z^{(\cos)}
+=
+\prod_{i=1}^d
+\int_{\Real}
+\mathcal{N}(x_i \mid x_{0,i},s_i^2)
+\exp\!\left(\frac{\kappa}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))\right)\,\d x_i.
+\]
+% CODEX: compute the integrals analyticaly it should be possible at least in terms of some standard fucntions available in scipy.func
+Hence exact normalization reduces to one-dimensional quadrature. The target is therefore analytically specified after numerical evaluation of one-dimensional integrals, even though the normalizing constant is not generally available in closed form. The posterior interpretation is immediate if $\ell(D(x-x_0))$ is viewed as an analytically designed likelihood factor applied to the prior density $\pi_0$.
+
+\subsection{Generalized benchmark}
+
+To generalize anisotropy beyond the coordinate axes, let $Q \in \Real^{d \times d}$ be an orthonormal (rotation) matrix let
+\[
+D = \diag(\vc\lambda), \qquad \vc\lambda \in \Real^d_+.
+\]
+Set $z = Q(x-x_0)$. The most general benchmark family considered here is a finite positive sum of separable components,
+%CODEX: do not overcomplicate eliminate general M number of terms, consider just the central bump + oscilatory term
+%CODEX: eliminate redundant parameters (e.g. a_2), total scale of the likelihood is irrelevant
+\[
+\ell_{\mathrm{gen}}(z)
+=
+\sum_{m=1}^{M} a_m \prod_{i=1}^d \ell_i^{(m)}(z_i),
+\qquad a_m > 0,
+\]
+with one-dimensional factors $\ell_i^{(m)} : \Real \to \Real_+$. The target density is then
+\[
+\pi_{\mathrm{gen}}(x)
+=
+\frac{1}{Z_{\mathrm{gen}}}\,\ell_{\mathrm{gen}}(Q(x-x_0))\,\pi_0(x).
+\]
+
+The two-component modifier in \eqref{eq:target-density-axis} is a special case of this family with
+\[
+\ell_i^{(1)}(z_i) = \exp\!\left(-\frac{1}{d}|\lambda_i z_i|^p\right),
+\qquad
+\ell_i^{(2)}(z_i) = \exp\!\left(\frac{\kappa}{d}\cos(\omega \lambda_i z_i)\right),
+\]
+and the generalized family extends this by allowing vector-valued parameter fields such as
+%CODEX: do not see any usage of \phi parameter.
+%CODEX: explicitly state that you make certain parameters axis / dimansion dependent.
+%CODEX: rather use \omega  only in the oscilatory term instead of scaling lambda
+%CODEX: the notation mix the vector and componentwise expressions, fix that
+\[
+\vc p \in [1,2]^d,
+\qquad
+\vc\kappa \in \Real_+^d,
+\qquad
+\vc\omega \in \Real_+^d,
+\qquad
+\vc\varphi \in \Real^d,
+\]
+as well as more general one-dimensional factor families $\ell_i^{(m)}$. This generalized form still preserves one-dimensional separability and therefore retains the same target-side computational strategy.
+
+The separable structure is preserved exactly in the rotated coordinates $z$, but the full target remains a tensor product only if the Gaussian factors are expressed in the same basis. For the benchmark developed here, the cleanest choice is therefore
+\[
+S_0 = Q^\top \diag(s_1^2,\dots,s_d^2) Q.
+\]
+%CODEX: restrict prior both here and in the basic case to isotropic so it remains invariant to the rotation Q
+Under this alignment the prior in $z$-coordinates is diagonal, and all target-side integrals needed later for \MMD\ again reduce to products of one-dimensional terms. If one instead keeps a prior covariance that is not diagonal in the $Q$ basis, the benchmark remains well defined but exact product factorization is generally lost. In that case the rotated model should be presented as an extension with efficient but no longer fully separable Gaussian integration.
+
+This formulation also separates the modeling roles of $D$ and $Q$. The matrix $D$ controls anisotropic sensitivity, hence the effective benchmark dimension, while $Q$ only changes the orientation of that sensitive subspace in the ambient coordinates.
+
+\subsection{Additive versus multiplicative benchmark modifiers}
+%CODEX: You should point this out more strongly. The aditive case is problematic bocause the integral of the oscilatory term dos not admit 
+% normalization. So please turn all setup to the multiplicative form and then remove this section. 
+The modifier in \eqref{eq:target-density-axis} is additive. This is less conventional than a product of local factors, but it is convenient for the benchmark objective because it keeps the concentrating and oscillatory contributions explicitly separated. The target-side Gaussian-kernel expectations then decompose into a sum of two separable contributions, which is exactly the structure used later for efficient \MMD\ evaluation.
+
+An alternative is the multiplicative form
+\[
+\ell_{\times}(u)
+=
+\exp\!\left(
+-\frac{1}{d}\sum_{i=1}^d |u_i|^p
++ \frac{\kappa}{d}\sum_{i=1}^d \cos(\omega u_i)
+\right).
+\]
+This variant is closer to the usual likelihood notation because its logarithm is additive across coordinates. It also remains separable,
+\[
+\ell_{\times}(u)
+=
+\prod_{i=1}^d \exp\!\left(-\frac{1}{d}|u_i|^p + \frac{\kappa}{d}\cos(\omega u_i)\right),
+\]
+so the same rotated-coordinate reduction to one-dimensional quadrature remains available.
+
+The present paper keeps the additive modifier as the primary benchmark definition. The reason is that it exposes the two intended benchmark mechanisms directly and makes their relative weight easy to control through the coefficient $a$. The multiplicative form should nevertheless be treated as a natural companion benchmark, especially if a more conventional posterior interpretation becomes more important than explicit decomposition into concentration and oscillation components.
+
+\subsection{Analytically evaluable one-dimensional factors}
+
+Several one-dimensional integrals required by the benchmark admit closed-form or rapidly convergent semi-analytic expressions. These should be used whenever the parameter choice allows them.
+
+First, for the quadratic power term $p=2$, one obtains for $X \sim \mathcal{N}(\mu,\sigma^2)$
+\[
+\E\!\left[\exp\!\left(-\alpha X^2\right)\right]
+=
+\frac{1}{\sqrt{1+2\alpha \sigma^2}}
+\exp\!\left(
+-\frac{\alpha \mu^2}{1+2\alpha \sigma^2}
+\right),
+\qquad \alpha \ge 0.
+\]
+Therefore every factor in $Z^{(p)}$ with exponent $p=2$ can be evaluated analytically by setting $\alpha = \lambda_i^2/d$.
+
+Second, the cosine term admits an exact Fourier--Bessel expansion. For $\beta \ge 0$,
+\[
+\exp\!\left(\beta \cos \theta\right)
+=
+I_0(\beta) + 2\sum_{n=1}^{\infty} I_n(\beta)\cos(n\theta),
+\]
+where $I_n$ denotes the modified Bessel function of the first kind. Consequently, for $X \sim \mathcal{N}(\mu,\sigma^2)$,
+\[
+\E\!\left[\exp\!\left(\beta \cos(\omega X + \varphi)\right)\right]
+=
+I_0(\beta)
++ 2\sum_{n=1}^{\infty}
+I_n(\beta)
+\cos\!\left(n(\omega \mu + \varphi)\right)
+\exp\!\left(-\frac{1}{2}n^2\omega^2\sigma^2\right).
+\]
+This provides an exact representation and a practical numerical evaluation scheme because the Gaussian damping makes the series rapidly convergent for moderate $\beta$ and $\omega \sigma$.
+
+The same idea applies to the mixed term in \MMD. Multiplying the Gaussian probe by the Gaussian prior yields
+\[
+\exp\!\left(-\frac{(x-o)^2}{2r^2}\right)\mathcal{N}(x\mid \mu,s^2)
+=
+C(o,\mu;r,s)\,\mathcal{N}(x\mid \mu_\ast,\sigma_\ast^2),
+\]
+with
+\[
+\sigma_\ast^2 = \left(r^{-2}+s^{-2}\right)^{-1},
+\qquad
+\mu_\ast = \sigma_\ast^2\left(r^{-2}o+s^{-2}\mu\right),
+\]
+\[
+C(o,\mu;r,s)
+=
+\frac{r}{\sqrt{r^2+s^2}}
+\exp\!\left(-\frac{(o-\mu)^2}{2(r^2+s^2)}\right).
+\]
+Hence every one-dimensional mixed factor reduces again to an expectation under a Gaussian law and can use the same analytic formulas for quadratic power terms and Fourier--Bessel series for cosine terms. In the basic benchmark one simply takes $\varphi=0$ and a common pair $(\kappa,\omega)$; the vector-valued generalizations belong to the next subsection only. Only the genuinely nonquadratic power exponents require one-dimensional numerical quadrature.
+
+\section{Maximum mean discrepancy and related metrics}
+
+Let $P$ denote the exact target distribution and let
+\[
+\widehat P_N = \frac{1}{N}\sum_{n=1}^N \delta_{X_n}
+\]
+be the empirical measure generated by a sampler. For a positive definite kernel $k$, the squared \MMD\ is
+\[
+\MMD_k^2(P,Q)
+=
+\E_{X,X' \sim P}[k(X,X')]
+- 2\E_{X \sim P, Y \sim Q}[k(X,Y)]
++ \E_{Y,Y' \sim Q}[k(Y,Y')],
+\]
+which is the squared distance between kernel mean embeddings in the corresponding reproducing kernel Hilbert space \parencite{Gretton2012,Sriperumbudur2010Hilbert}.
+
+We focus on the anisotropic Gaussian kernel
+\[
+k_R(x,y)
+=
+\exp\!\left(-\frac{1}{2}(x-y)^\top R^{-1}(x-y)\right),
+\]
+with $R \succ 0$. This kernel is characteristic, so $\MMD_{k_R}(P,Q)=0$ if and only if $P=Q$ \parencite{Sriperumbudur2011Universality}. It also metrizes weak convergence under standard conditions, which is useful when interpreting multi-scale benchmark scores \parencite{SimonGabriel2020WeakMMD}. For the intended benchmark role, \MMD\ has three practical advantages. It is symmetric, straightforward to compute from samples, and directly interpretable as a discrepancy between Gaussian-smoothed versions of the two distributions.
+
+This interpretation also clarifies the relation to nearby metrics. A fixed Gaussian bandwidth yields a smoothed discrepancy, so \MMD\ is typically less sensitive than $\TV$ or raw $L^2$ distance to defects below the kernel scale. It is also easier to estimate from finite samples than $\KL$ in moderate to high dimension, while avoiding the coordinatewise limitations of Kolmogorov--Smirnov-type statistics. On the other hand, bounded-kernel \MMD\ does not encode transport geometry in the same way as Wasserstein distance. For benchmarking, this is acceptable because the primary goal is a stable and exactly evaluable target-side metric rather than a universal ordering of all forms of approximation error.
+
+\section{Efficient \texorpdfstring{\MMD}{MMD} calculation by separation}
+
+For the empirical measure $\widehat P_N$, the Gaussian-kernel \MMD\ decomposes as
+\[
+\MMD_R^2(P,\widehat P_N) = T_{PP} - 2T_{P\widehat P_N} + T_{\widehat P_N\widehat P_N},
+\]
+where
+\[
+T_{PP} = \iint k_R(x,y)\,\pi(x)\,\pi(y)\,\d x\,\d y,
+\]
+\[
+T_{P\widehat P_N} = \frac{1}{N}\sum_{n=1}^N \int k_R(x,X_n)\,\pi(x)\,\d x,
+\]
+\[
+T_{\widehat P_N\widehat P_N} = \frac{1}{N^2}\sum_{n,m=1}^N k_R(X_n,X_m).
+\]
+The last term is a standard empirical kernel average. The benchmark-specific advantage lies in the first two terms.
+
+If both the target and the kernel are diagonal in the same coordinate system, then the mixed term factorizes. For the axis-aligned case with $R=\diag(r_1^2,\dots,r_d^2)$,
+\[
+\int k_R(x,o)\,\pi(x)\,\d x
+=
+\frac{1}{Z}
+\left[
+a\,I^{(p)}(o,R) + I^{(\cos)}(o,R)
+\right],
+\]
+with
+\[
+I^{(p)}(o,R)
+=
+\prod_{i=1}^d
+\int_{\Real}
+\exp\!\left(-\frac{(x_i-o_i)^2}{2r_i^2}\right)
+\mathcal{N}(x_i \mid x_{0,i},s_i^2)
+\exp\!\left(-\frac{1}{d}|\lambda_i (x_i-x_{0,i})|^p\right)\,\d x_i,
+\]
+and an analogous factorization for $I^{(\cos)}(o,R)$ with the cosine factor
+\[
+\exp\!\left(\frac{\kappa}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))\right).
+\]
+The same structure holds for $T_{PP}$, now with two Gaussian kernels coupled through separate one-dimensional factors. If each one-dimensional integral is evaluated by an $M$-point quadrature rule, a single mixed expectation costs $O(dM)$, while the empirical kernel term costs $O(N^2 d)$.
+
+For the rotated benchmark, one writes $z=Qx$ and aligns the kernel as
+\[
+R = Q^\top \diag(r_1^2,\dots,r_d^2)Q.
+\]
+In the $z$ basis, the Gaussian kernel becomes diagonal again and the same product formulas apply. This leads to a simple rule that should be stated explicitly in the manuscript:
+
+\begin{mdframed}
+Exact one-dimensional factorization of the target-side Gaussian-kernel \MMD\ terms is preserved under rotation if the benchmark modifier, prior covariance, and Gaussian bandwidth matrix are all diagonal in the same rotated coordinates.
+\end{mdframed}
+
+This statement is more precise than claiming that the rotated benchmark is always separable. The rotation itself is harmless; the loss of factorization occurs only when the Gaussian terms are kept in a different basis.
+
+\section{Choosing the \texorpdfstring{\MMD}{MMD} kernel}
+
+The Gaussian kernel is a natural choice because it matches the Gaussian probe functions that motivate the discrepancy. The bandwidth matrix $R$ controls the spatial scale and directional resolution of the comparison. Small eigenvalues of $R$ detect fine local errors but become sensitive to sample discreteness; large eigenvalues suppress high-frequency differences and primarily detect coarse mismatch in location, spread, and mode balance.
+
+For benchmarking, a single fixed bandwidth is usually too restrictive. A multi-scale family
+\[
+R(\tau) = Q^\top \diag(\tau^2 s_1^2,\dots,\tau^2 s_d^2)Q
+\]
+with a geometric grid of $\tau$ values provides a more stable profile. The notes suggest a lower-bound heuristic based on the effective dimension $d_{\mathrm{eff}}$,
+\[
+\sqrt{\lambda_i(R)} \gtrsim c\,s_i\,N^{-1/d_{\mathrm{eff}}},
+\]
+and an empirical overlap diagnostic,
+\[
+\bar{k}_{\mathrm{off}}(R)
+=
+\frac{1}{N(N-1)}\sum_{n \neq m} k_R(X_n,X_m).
+\]
+If $\bar{k}_{\mathrm{off}}(R)$ is much smaller than $1/N$, the kernel is too narrow for the available sample size and the empirical term is dominated by the trivial diagonal contribution. In practice the benchmark should therefore report either a multi-scale \MMD\ profile or a carefully justified bandwidth family rather than a single nominal score.
+
+\section{Practical implementation in \texttt{numpy} and \texttt{scipy}}
+
+The implementation can be organized around four parameter blocks: the benchmark scales in $D$, the rotation matrix $Q$, the Gaussian prior parameters $(x_0,S_0)$, and the kernel scales in $R$. In the aligned case the main numerical task is one-dimensional quadrature for a family of integrands of the form
+\[
+x \mapsto
+\exp\!\left(-\frac{(x-o)^2}{2r^2}\right)
+\exp\!\left(-\frac{(x-\mu)^2}{2s^2}\right)
+\rho(x),
+\]
+where the last factor is either $\exp(-\alpha |x|^p)$ or $\exp(\beta \cos(\gamma x))$.
+
+In \texttt{numpy}, the empirical term $T_{\widehat P_N\widehat P_N}$ is naturally vectorized through pairwise transformed coordinates $QX_n$ and batched quadratic forms. In \texttt{scipy}, the one-dimensional factors can be evaluated either with adaptive quadrature or with fixed Gaussian quadrature on suitably truncated intervals. Because the final expressions multiply many terms, a log-domain implementation is preferable:
+\[
+\log \prod_{i=1}^d a_i = \sum_{i=1}^d \log a_i.
+\]
+This avoids underflow when $d$ is moderate or large and also simplifies the comparison of different bandwidth scales. The repository prototype in \texttt{scripts/benchmark\_reference.py} implements the exact target-side terms, while \texttt{scripts/plot\_test\_function.py} generates the benchmark-visualization figures used below.
+
+The rotated case adds little implementation overhead if the alignment convention is adopted from the start. One first computes $z_n = QX_n$, evaluates the same one-dimensional building blocks in the $z$ basis, and then reuses the axis-aligned formulas. This is one of the main practical reasons to formulate the benchmark in rotated coordinates rather than treating the rotation as a post hoc perturbation.
+
+\section{Parameter regimes for challenging inverse-problem surrogates}
+
+The benchmark is not intended to reproduce the full geometry of a PDE-constrained posterior. Its role is narrower: to isolate several recurring sources of difficulty while keeping the target-side discrepancy exactly or efficiently computable. For inverse problems involving heterogeneous coefficient fields in elliptic models such as Darcy flow or linear elasticity, three parameter regimes are especially useful.
+%CODEX: for following sources of difficulties provide particular example in which practical inverse problems (in context of Darcy flow) it may happen
+
+\subsection{Low-dimensional informed subspace in a high-dimensional ambient space}
+
+A standard setting in field inversion is that only a limited number of coarse or data-informed modes are well identified, while many remaining modes stay close to the prior. This is represented by choosing a large ambient dimension $d$, a smaller effective dimension $d_{\mathrm{eff}} \ll d$, and anisotropy scales satisfying
+\[
+\lambda_1 \ge \cdots \ge \lambda_{d_{\mathrm{eff}}} \gg \lambda_{d_{\mathrm{eff}}+1} \ge \cdots \ge \lambda_d.
+\]
+The rotation matrix $Q$ then plays the role of a reduced basis or Karhunen--Lo\`eve coordinate system. In this regime, a sampler must detect a narrow informative subspace embedded in many weakly constrained directions.
+
+\subsection{Multiscale mode structure in leading coordinates}
+
+Oscillatory ambiguity is relevant when different parameter fields generate similar state observations. This can occur through sign changes, phase shifts, or compensating local features in a heterogeneous field representation. To mimic this, one should keep $\kappa_i$ and $\omega_i$ appreciable only in the first few active coordinates and let them decay afterward. A useful pattern is
+\[
+\kappa_i =
+\begin{cases}
+\kappa_{\mathrm{hi}}, & i \le d_{\mathrm{osc}},\\
+\kappa_{\mathrm{lo}}, & i > d_{\mathrm{osc}},
+\end{cases}
+\qquad
+\omega_i \propto i^\alpha,
+\]
+with $d_{\mathrm{osc}} \le d_{\mathrm{eff}}$ and $\alpha > 0$. The first coordinates then contain repeated local modes at several spatial scales, while the rest remain dominated by prior-Gaussian behavior.
+
+\subsection{Heavy-tailed or sharp directions}
+
+Posterior concentration in coefficient inversion is often uneven: some reduced coordinates are close to Gaussian, while others show sharper or more cusp-like behavior due to thresholds, localized inclusions, or near-nonidentifiability. This can be modeled by coordinate-dependent exponents
+\[
+p_i =
+\begin{cases}
+2, & i \in \mathcal{I}_{\mathrm{smooth}},\\
+p_{\mathrm{sharp}}, & i \in \mathcal{I}_{\mathrm{sharp}},
+\end{cases}
+\qquad 1 \le p_{\mathrm{sharp}} < 2.
+\]
+Quadratic coordinates keep the analytically tractable Gaussian-like core, while subquadratic coordinates create sharper central concentration and increase the difficulty of local exploration.
+
+\subsection{Concrete benchmark templates}
+%CODEX: the examples are associated with Darcy and elasticity quite arbitrarly, I weould prefer to 
+%       provide examples of the 3 sources of difficoulties whitn a single physical process (e.g. Darcy flow) 
+
+The following templates are suitable starting points.
+
+\begin{enumerate}
+    \item \textbf{Rotated sparse-informative benchmark:} choose $d=100$, $d_{\mathrm{eff}}=8$, $\lambda_i = 6$ for $i \le 8$, $\lambda_i = 0.6$ otherwise, $p_i = 2$, and nontrivial rotation $Q$. This probes whether a sampler can adapt to a narrow informed subspace.
+    \item \textbf{Darcy-inspired multiscale benchmark:} choose $d=128$, prior scales $s_i \propto i^{-1}$, $\lambda_i \propto i^{-1/2}$ for the first 20 modes and rapidly decaying afterward, with oscillatory parameters $\kappa_i$ nonzero only for the first 6 to 10 modes. This mimics a situation where only coarse conductivity modes are well informed, but a few leading directions exhibit multimodal ambiguity.
+    \item \textbf{Elasticity-inspired mixed-regularity benchmark:} choose $d=80$, two groups of active coordinates, one with $p_i=2$ and another with $p_i \approx 1.2$, together with moderate oscillatory amplitudes in the first group only. This creates a mixture of near-Gaussian and sharp directions, resembling parameter blocks with very different identifiability.
+\end{enumerate}
+
+These examples are not literal PDE posteriors. Rather, they are controlled surrogates for the main numerical obstacles: high ambient dimension, concentration in a rotated subspace, multimodality in only a few directions, and uneven local regularity across coordinates.
+%CODEX: change plots to 2D histograms + contours using matrix of 4 dimension pairs, two dimensions from the active set of dimensions two dimensions from the "inactive set"
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/testcase_modifier_slices.pdf}
+    \caption{Pseudo-three-dimensional slices of the modifier $\ell(z)$ for the three concrete benchmark templates. Each panel shows the slice in the first two rotated coordinates, with all remaining coordinates fixed at zero. The base surface shows the two-dimensional modifier landscape, while the colored wall curves show one-dimensional marginals along the coordinate axes.}
+    \label{fig:testcase-modifier-slices}
+\end{figure}
+
+Figure~\ref{fig:testcase-modifier-slices} makes the intended contrast between the templates explicit. The sparse-informative case retains a narrow but comparatively regular dominant basin, the Darcy-inspired case introduces repeated local structure in the leading coordinates, and the elasticity-inspired case combines smooth and sharper directions in a way that produces steeper local variations near the main basin.
+
+\section{Conclusion}
+
+The proposed benchmark family is designed for a specific evaluation niche: challenging but analytically controlled targets for Bayesian samplers, with exact target-side Gaussian-kernel \MMD\ evaluation and without dependence on a reference Markov chain. The key modeling choice is to preserve separability in an appropriate coordinate system, even in the presence of anisotropy and rotation. Under that choice, the benchmark remains flexible enough to vary effective dimension, multimodality, and anisotropic resolution, while still admitting a computational pipeline based on one-dimensional quadrature and vectorized kernel calculations.
+
+\printbibliography
+
+\end{document}
