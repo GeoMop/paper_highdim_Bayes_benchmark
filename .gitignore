@@ -215,8 +215,9 @@ __marimo__/
 *.fls
 *.log
 *.out
-*.pdf
 *.run.xml
+
+main-d.tex
 
 # Local TeX cache created by build.sh
 .texlive-var/
