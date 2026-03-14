@@ -20,6 +20,7 @@ Write it as a bit more detailet paper:
 - interpret comments in form `%CODEX: ... ` as todo notes for your further changes. Turn them into `%DONE: ...` once you take the note into account. 
 - keep the newly generated %DONE: comments during processing the single prompt
 - Use `biblatex`: `\addbibresource{references.bib}` in `main.tex` and `\printbibliography` at the end.
+- Always build through `./build.sh`; do not invoke `latexmk`, `lualatex`, or `pdflatex` directly for manuscript builds.
 - Do not ask the user to build the project. If PDF review is needed, inspect the existing generated PDF with read-only Linux command-line tools and then edit the sources.
 - Assume the user reviews source changes in `git-cola` before commit; keep patches clean, localized, and easy to inspect.
 

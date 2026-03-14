@@ -121,7 +121,6 @@ This choice also clarifies the role of alternative discrepancies. Kernel Stein d
 \section{Parametrized likelihood and posterior family}
 
 \subsection{Axis-aligned separable construction}
-\subsection{Axis-aligned separable construction}
 Let $x \in \Real^d$ denote the parameter vector. In the basic benchmark, the prior is isotropic,
 \[
 \pi_0(x) = \mathcal{N}(x \mid x_0,s_0^2 I),
@@ -130,15 +129,20 @@ so it remains invariant under rotation. Let $\vc\lambda \in \Real_+^d$ and set
 \[
 D = \diag(\lambda_1,\dots,\lambda_d),
 \qquad
-u = D(x-x_0).
+\vc u = D(x-x_0).
 \]
-The basic modifier is taken in multiplicative form,
+The basic modifier is taken in multiplicative form. Writing $u_i = \lambda_i (x_i-x_{0,i})$, define the one-dimensional factor
 \[
-\ell(u)
+\ell_i(u_i)
 =
 \exp\!\left(
--\frac{1}{d}\norm{u}_2^2 + \frac{1}{d}\sum_{i=1}^d \cos(\omega u_i)
+-\frac{1}{d}u_i^2 + \frac{1}{d}\cos(\omega u_i)
 \right),
+\qquad i=1,\dots,d,
+\]
+and therefore
+\[
+\ell(\vc u) = \prod_{i=1}^d \ell_i(u_i),
 \qquad \omega > 0.
 \]
 The corresponding target density is
@@ -160,26 +164,26 @@ where
 Z_i
 =
 \int_{\Real}
-\pi_{0,i}(x_i)
-\exp\!\left(
--\frac{\lambda_i^2}{d}(x_i-x_{0,i})^2
-+ \frac{1}{d}\cos(\omega \lambda_i (x_i-x_{0,i}))
-\right)\,\d x_i,
+\pi_{0,i}(x_i)\,\ell_i(u_i)\,\d x_i,
 \]
 with $\pi_{0,i}(x_i)=\mathcal{N}(x_i \mid x_{0,i},s_0^2)$. Hence exact normalization reduces to one-dimensional factors.
 
 \subsection{Generalized benchmark}
 To generalize anisotropy beyond the coordinate axes, let $Q \in \Real^{d \times d}$ be an orthonormal matrix and set
 \[
-z = Q(x-x_0).
+\vc z = Q(x-x_0),
+\qquad
+D_{\lambda} = \diag(\vc\lambda),
+\qquad
+\Omega = \diag(\vc\omega).
 \]
 The generalized modifier is
 \[
-\ell_{\mathrm{gen}}(z)
+\ell_{\mathrm{gen}}(\vc z)
 =
 \exp\!\left(
--\frac{1}{d}\sum_{i=1}^d |\lambda_i z_i|^{p_i}
-+ \frac{1}{d}\sum_{i=1}^d \kappa_i \cos(\omega_i z_i)
+-\frac{1}{d}\sum_{i=1}^d |(D_{\lambda}\vc z)_i|^{p_i}
++ \frac{1}{d}\vc\kappa^\top \cos(\Omega \vc z)
 \right),
 \]
 with axis-dependent parameter vectors
@@ -200,7 +204,7 @@ The target density is
 \]
 The basic benchmark is recovered by taking $\vc p \equiv 2$, $\vc\kappa \equiv \vc 1$, and $\vc\omega \equiv \omega \vc 1$.
 
-This is the level of generality that still preserves separability while keeping the meaning of each parameter clear. The vector $\vc\lambda$ controls anisotropic concentration, $\vc p$ controls local regularity of the central bump, $\vc\kappa$ controls the strength of oscillatory multimodality, and $\vc\omega$ controls the oscillation frequency. Because the prior remains isotropic, the role of $Q$ is only to orient the difficult subspace in the ambient coordinates.
+This is the level of generality that still preserves separability while keeping the meaning of each parameter clear. The vector $\vc\lambda$ controls anisotropic concentration, $\vc p$ controls the marginal tail decay and central sharpness of the one-dimensional factors in the rotated coordinates, $\vc\kappa$ controls the strength of oscillatory multimodality, and $\vc\omega$ controls the oscillation frequency. Because the prior remains isotropic, the role of $Q$ is only to orient the difficult subspace in the ambient coordinates.
 
 \subsection{Analytically evaluable one-dimensional factors}
 
@@ -354,7 +358,7 @@ If $\bar{k}_{\mathrm{off}}(R)$ is much smaller than $1/N$, the kernel is too nar
 
 \section{Practical implementation in \texttt{numpy} and \texttt{scipy}}
 
-The implementation can be organized around four parameter blocks: the benchmark scales in $D$, the rotation matrix $Q$, the Gaussian prior parameters $(x_0,S_0)$, and the kernel scales in $R$. In the aligned case the main numerical task is one-dimensional quadrature for a family of integrands of the form
+The implementation can be organized around four parameter blocks: the anisotropy parameters $(D_{\lambda},\vc p,\vc\kappa,\Omega)$, the rotation matrix $Q$, the Gaussian prior parameters $(x_0,s_0)$, and the kernel scales in $R$. In the aligned case the main numerical task is one-dimensional quadrature for a family of integrands of the form
 \[
 x \mapsto
 \exp\!\left(-\frac{(x-o)^2}{2r^2}\right)
@@ -368,8 +372,6 @@ In \texttt{numpy}, the empirical term $T_{\widehat P_N\widehat P_N}$ is naturall
 \log \prod_{i=1}^d a_i = \sum_{i=1}^d \log a_i.
 \]
 This avoids underflow when $d$ is moderate or large and also simplifies the comparison of different bandwidth scales. The repository prototype in \texttt{scripts/benchmark\_reference.py} implements the exact target-side terms, while \texttt{scripts/plot\_test\_function.py} generates the benchmark-visualization figures used below.
-%DONE: move the Python prototype into scripts/benchmark_reference.py and keep manuscript references consistent with that path
-%DONE: add scripts/plot_test_function.py for manuscript figure generation
 
 The rotated case adds little implementation overhead if the alignment convention is adopted from the start. One first computes $z_n = QX_n$, evaluates the same one-dimensional building blocks in the $z$ basis, and then reuses the axis-aligned formulas. This is one of the main practical reasons to formulate the benchmark in rotated coordinates rather than treating the rotation as a post hoc perturbation.
 
@@ -410,10 +412,8 @@ p_{\mathrm{sharp}}, & i \in \mathcal{I}_{\mathrm{sharp}},
 \end{cases}
 \qquad 1 \le p_{\mathrm{sharp}} < 2.
 \]
-%CODEX: Following interpretation is wrong, $p$ value has noting to do with spatial shape of the heterogeneity. Spatial behavior is desribed by th emode functions, 
-% $p$ affects SHAPE of DISTRIBUTION of the mode eigenvalue. Havy tailed mode means that its eigen value span multiple orders of magnitude. Analyse what is the impact on 
-%the resulting random field. 
-Quadratic coordinates keep the analytically tractable Gaussian-like core, while subquadratic coordinates create sharper central concentration and increase the difficulty of local exploration. In Darcy inversion this mimics mixed regimes where some conductivity modes are smoothly identifiable but others correspond to localized barriers or interfaces and produce much sharper posterior features.
+Quadratic coordinates keep the analytically tractable Gaussian-like core, while subquadratic coordinates produce one-dimensional marginal factors with slower tail decay and a sharper peak at the origin. In the inverse-problem interpretation, this does not directly describe the spatial shape of the heterogeneous field, which is controlled by the basis or mode functions encoded through $Q$. Instead, it changes the distribution of the corresponding mode amplitudes: smaller values of $p_i$ increase the probability of both near-zero coefficients and occasional larger excursions, so the associated random field can combine long periods of weak activation with intermittent strong contributions along the affected modes.
+%DONE: clarify that the exponents p_i control the distribution of rotated mode amplitudes rather than the spatial shape of the heterogeneous field
 
 \subsection{Concrete benchmark templates}
 
@@ -426,8 +426,6 @@ The following templates are suitable starting points.
 \end{enumerate}
 
 These examples are not literal PDE posteriors. Rather, they are controlled surrogates for the main numerical obstacles: high ambient dimension, concentration in a rotated subspace, multimodality in only a few directions, and uneven local regularity across coordinates.
-%DONE: replace the pseudo-3D modifier plots by 2D pair-matrix contour plots
-%DONE: save the generated testcase figures as PDF in figures/
 
 \begin{figure}[t]
     \centering
@@ -435,10 +433,8 @@ These examples are not literal PDE posteriors. Rather, they are controlled surro
     \caption{Contour matrices of the modifier $\ell(z)$ for the three concrete Darcy-inspired benchmark templates. For each row, the four panels show two active--active, two active--inactive, and one inactive--inactive coordinate pair, with all remaining coordinates fixed at zero. This layout makes it explicit which directions carry the dominant structure and which remain close to the background geometry.}
     \label{fig:testcase-pair-matrices}
 \end{figure}
-%DONE: include the combined testcase pair-matrix PDF figure in main.tex
 
 Figure~\ref{fig:testcase-pair-matrices} makes the intended contrast between the templates explicit. The low-rank case concentrates structure almost entirely in the active-active panels, the multimodal case produces repeated contour patterns only in a few leading coordinates, and the mixed-regularity case combines smooth and sharper contour geometry across the active subspace while leaving inactive directions comparatively featureless.
-%DONE: regenerate the manuscript PDF with the new pair-matrix figure
 
 \section{Conclusion}
 
